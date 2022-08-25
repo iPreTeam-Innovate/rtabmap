@@ -860,5 +860,13 @@ bool SensorData::isPointVisibleFromCameras(const cv::Point3f & pt) const
 	return false;
 }
 
+	// Custom Functions
+	void SensorData::setPersonBoundingBoxes(std::vector<std::vector<std::vector<float>>> personBoundingBoxes){
+		_personBoundingBoxes = personBoundingBoxes;
+	}
+	// std::vector<std::vector<std::vector<float>>> SensorData::getPersonBoundingBoxes(){
+	// 	return _personBoundingBoxes;
+	// }
+
 } // namespace rtabmap
 

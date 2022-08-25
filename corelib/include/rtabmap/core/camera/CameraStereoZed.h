@@ -60,7 +60,8 @@ public:
 			const Transform & localTransform = Transform::getIdentity(),
 			bool selfCalibration = true,
 			bool odomForce3DoF = false,
-			int texturenessConfidenceThr = 90); // introduced with ZED SDK 3
+			int texturenessConfidenceThr = 90, // introduced with ZED SDK 3
+			bool enablePersonDetection = true); // Custom Param to enable person detection); 
 	CameraStereoZed(
 			const std::string & svoFilePath,
 			int quality = 1,    // 0=NONE, 1=PERFORMANCE, 2=QUALITY
@@ -71,7 +72,8 @@ public:
 			const Transform & localTransform = Transform::getIdentity(),
 			bool selfCalibration = true,
 			bool odomForce3DoF = false,
-			int texturenessConfidenceThr = 90); // introduced with ZED SDK 3
+			int texturenessConfidenceThr = 90, // introduced with ZED SDK 3
+			bool enablePersonDetection = true); // Custom Param to enable person detection); 
 	virtual ~CameraStereoZed();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
@@ -104,6 +106,9 @@ private:
 	bool force3DoF_;
 	bool publishInterIMU_;
 	ZedIMUThread * imuPublishingThread_;
+
+	// Custom Params
+	bool enablePersonDetection_;
 #endif
 };
 

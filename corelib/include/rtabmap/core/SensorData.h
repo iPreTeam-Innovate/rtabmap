@@ -289,7 +289,12 @@ public:
 
 	bool isPointVisibleFromCameras(const cv::Point3f & pt) const; // assuming point is in robot frame
 
+	// Custom Functions
+	void setPersonBoundingBoxes(std::vector<std::vector<std::vector<float>>> personBoundingBoxes);
+	// Custon Variable
+	std::vector<std::vector<std::vector<float>>> _personBoundingBoxes;
 private:
+
 	int _id;
 	double _stamp;
 

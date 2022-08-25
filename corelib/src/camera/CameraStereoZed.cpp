@@ -251,7 +251,8 @@ CameraStereoZed::CameraStereoZed(
 		const Transform & localTransform,
 		bool selfCalibration,
 		bool odomForce3DoF,
-		int texturenessConfidenceThr) :
+		int texturenessConfidenceThr,
+		bool enablePersonDetection): // Custom Param to enable person detection
 	Camera(imageRate, localTransform)
 #ifdef RTABMAP_ZED
     ,
@@ -269,7 +270,8 @@ CameraStereoZed::CameraStereoZed(
 	lost_(true),
 	force3DoF_(odomForce3DoF),
 	publishInterIMU_(false),
-	imuPublishingThread_(0)
+	imuPublishingThread_(0),
+	enablePersonDetection_(enablePersonDetection)
 #endif
 {
 	UDEBUG("");
@@ -303,7 +305,8 @@ CameraStereoZed::CameraStereoZed(
 		const Transform & localTransform,
 		bool selfCalibration,
 		bool odomForce3DoF,
-		int texturenessConfidenceThr) :
+		int texturenessConfidenceThr,
+		bool enablePersonDetection): // Custom Param to enable person detection
 	Camera(imageRate, localTransform)
 #ifdef RTABMAP_ZED
     ,
@@ -321,7 +324,8 @@ CameraStereoZed::CameraStereoZed(
 	lost_(true),
 	force3DoF_(odomForce3DoF),
 	publishInterIMU_(false),
-	imuPublishingThread_(0)
+	imuPublishingThread_(0),
+	enablePersonDetection_(enablePersonDetection)
 #endif
 {
 	UDEBUG("");
@@ -625,6 +629,14 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 	sl::RuntimeParameters rparam((sl::SENSING_MODE)sensingMode_, quality_ > 0, quality_ > 0, sl::REFERENCE_FRAME_CAMERA);
 #else
     sl::RuntimeParameters rparam((sl::SENSING_MODE)sensingMode_, quality_ > 0, confidenceThr_, texturenessConfidenceThr_, sl::REFERENCE_FRAME::CAMERA);
+	sl::ObjectDetectionParameters detection_parameters;
+	detection_parameters.detection_model = sl::DETECTION_MODEL::MULTI_CLASS_BOX;
+	detection_parameters.enable_tracking = false;
+	sl::ObjectDetectionRuntimeParameters detection_parameters_rt;
+	sl::Objects objects; // Structure containing all the detected objects
+	std::vector<std::vector<std::vector<float>>> person_bounding_boxes;
+	if(enablePersonDetection_)
+		zed_->enableObjectDetection(detection_parameters);
 #endif
 
 	if(zed_)
@@ -667,6 +679,23 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 			zed_->retrieveImage(tmp,sl::VIEW_LEFT);
 #else
             zed_->retrieveImage(tmp,sl::VIEW::LEFT);
+			// if(enablePersonDetection_){
+			// 	zed_->retrieveObjects(objects, detection_parameters_rt);
+			// 	for(auto object : objects.object_list){
+			// 		if(object.label == sl::OBJECT_CLASS::PERSON){
+			// 			std::vector<sl::float3> bbox = object.bounding_box;
+			// 			std::vector<std::vector<float>> std_bbox;
+			// 			for(auto corner : bbox){
+			// 				std::vector<float> std_corner;
+			// 				std_corner.push_back(corner[0]);
+			// 				std_corner.push_back(corner[1]);
+			// 				std_corner.push_back(corner[2]);
+			// 				std_bbox.push_back(std_corner);
+			// 			}
+			// 			person_bounding_boxes.push_back(std_bbox);
+			// 		}
+			// 	}
+			// }
 #endif
 			cv::Mat rgbaLeft = slMat2cvMat(tmp);
 
@@ -684,7 +713,16 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
                 zed_->retrieveMeasure(tmp,sl::MEASURE::DEPTH);
 #endif
 				slMat2cvMat(tmp).copyTo(depth);
-
+				if(enablePersonDetection_){
+					zed_->retrieveObjects(objects, detection_parameters_rt);
+					for(auto object : objects.object_list){
+						if(object.label == sl::OBJECT_CLASS::PERSON){
+							std::vector<sl::uint2> bbox = object.bounding_box_2d;
+							cv::Mat roi_img(depth(cv::Rect(bbox[0][0], bbox[0][1], bbox[2][0] - bbox[0][0], bbox[2][1] - bbox[0][1])));
+							roi_img.setTo(cv::Scalar(NAN));
+						}
+					}
+				}
 				data = SensorData(left, depth, stereoModel_.left(), this->getNextSeqID(), UTimer::now());
 			}
 			else
@@ -700,6 +738,10 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 				cv::cvtColor(rgbaRight, right, cv::COLOR_BGRA2GRAY);
 			
 				data = SensorData(left, right, stereoModel_, this->getNextSeqID(), UTimer::now());
+			}
+			
+			if(enablePersonDetection_){
+				data.setPersonBoundingBoxes(person_bounding_boxes);
 			}
 
 			if(imuPublishingThread_ == 0)
