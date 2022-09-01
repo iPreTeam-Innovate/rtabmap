@@ -87,7 +87,7 @@ public:
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
 
-private:
+// private:
 #ifdef RTABMAP_ZED
 	sl::Camera * zed_;
 	StereoCameraModel stereoModel_;
